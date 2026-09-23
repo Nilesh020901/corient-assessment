@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User role definition (e.g. SUPER_ADMIN, ADMIN, IT_MEMBER, CLIENT)
+model Role {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  users           User[]
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// Granular permission table (module + action, e.g. "SOP" + "PUBLISH")
+model Permission {
+  id              String           @id @default(uuid())
+  module          String
+  action          String
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now())
+
+  @@unique([module, action])
+}
+
+// Junction table linking roles to their permissions
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+// System user account
+model User {
+  id                 String                 @id @default(uuid())
+  email              String                 @unique
+  passwordHash       String
+  name               String
+  roleId             String
+  role               Role                   @relation(fields: [roleId], references: [id])
+  isActive           Boolean                @default(true)
+  refreshTokens      RefreshToken[]
+  ownedProjects      Project[]              @relation("ProjectOwner")
+  assignedStages     ProjectWorkflowStage[] @relation("StageOwner")
+  statusHistoryLogs  StageStatusHistory[]   @relation("HistoryActor")
+  auditLogs          AuditLog[]             @relation("AuditActor")
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+}
+
+// Stores hashed refresh tokens to allow revocation and rotation
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// SOP Template configured by Super Admins
+model SopTemplate {
+  id             String       @id @default(uuid())
+  title          String
+  description    String?
+  isDraft        Boolean      @default(true)
+  currentVersion Int          @default(0)
+  stages         SopStage[]
+  versions       SopVersion[]
+  projects       Project[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Individual stage inside an SOP Template
+model SopStage {
+  id            String      @id @default(uuid())
+  sopTemplateId String
+  sopTemplate   SopTemplate @relation(fields: [sopTemplateId], references: [id], onDelete: Cascade)
+  name          String
+  order         Int
+  clientVisible Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Immutable published SOP version snapshot
+model SopVersion {
+  id            String      @id @default(uuid())
+  sopTemplateId String
+  sopTemplate   SopTemplate @relation(fields: [sopTemplateId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  stagesData    Json        // Preserves exact stages snapshot at time of publish
+  projects      Project[]
+  createdAt     DateTime    @default(now())
+
+  @@unique([sopTemplateId, versionNumber])
+}
+
+// Project created from an SOP template
+model Project {
+  id            String                 @id @default(uuid())
+  name          String
+  description   String?
+  sopTemplateId String
+  sopTemplate   SopTemplate            @relation(fields: [sopTemplateId], references: [id])
+  sopVersionId  String
+  sopVersion    SopVersion             @relation(fields: [sopVersionId], references: [id])
+  ownerId       String?
+  owner         User?                  @relation("ProjectOwner", fields: [ownerId], references: [id])
+  stages        ProjectWorkflowStage[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+// Workflow stage generated for a specific project
+model ProjectWorkflowStage {
+  id             String               @id @default(uuid())
+  projectId      String
+  project        Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  order          Int
+  status         String               @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, ON_HOLD, BLOCKED, COMPLETED
+  clientVisible  Boolean              @default(false)
+  ownerId        String?
+  owner          User?                @relation("StageOwner", fields: [ownerId], references: [id])
+  dueDate        DateTime?
+  blocker        String?
+  holdReason     String?
+  completionDate DateTime?
+  remarks        String?
+  documents      Json?                // Stored document metadata/links
+  history        StageStatusHistory[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+}
+
+// Immutable record of every stage status change
+model StageStatusHistory {
+  id             String               @id @default(uuid())
+  stageId        String
+  stage          ProjectWorkflowStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  previousStatus String?
+  newStatus      String
+  changedById    String
+  changedBy      User                 @relation("HistoryActor", fields: [changedById], references: [id])
+  blocker        String?
+  holdReason     String?
+  remarks        String?
+  createdAt      DateTime             @default(now())
+}
+
+// Append-only audit log for system-wide state changes
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id])
+  action     String   // CREATE, UPDATE, DELETE, PUBLISH, STATUS_CHANGE
+  entityType String   // USER, SOP, PROJECT, STAGE, ROLE
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+}
