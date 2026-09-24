@@ -157,6 +157,16 @@ const reassignStages = async (userId, targetUserId) => {
     }
   });
 
+  // Bonus 3: Notifications Scaffold - Alert target team member of reassigned workflow stages
+  const notificationsService = require('../notifications/notifications.service');
+  await notificationsService.createNotification({
+    userId: targetUserId,
+    type: 'REASSIGNMENT',
+    title: 'Workflow Stages Reassigned to You',
+    message: `${result.count} active workflow stages have been reassigned to you.`,
+    entityId: targetUserId
+  });
+
   return {
     reassignedCount: result.count,
     targetUserId,

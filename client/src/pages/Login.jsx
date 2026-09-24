@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../redux/slices/authSlice';
+import { LogIn, AlertCircle } from 'lucide-react';
 
 // Provide clean credential entry and route authenticated users to their role-specific dashboard
 export default function Login() {
@@ -45,20 +46,14 @@ export default function Login() {
     <div style={{ maxWidth: '400px', margin: '3rem auto' }}>
       <div className="card">
         <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Sign In</h2>
-        <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem', textAlign: 'center' }}>
           Enter your credentials to access the IT Workflow System
         </p>
 
         {error && (
-          <div style={{
-            backgroundColor: '#fee2e2',
-            color: '#991b1b',
-            padding: '0.75rem',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            marginBottom: '1rem'
-          }}>
-            {error}
+          <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+            <AlertCircle size={16} />
+            <span>{error}</span>
           </div>
         )}
 
@@ -95,6 +90,7 @@ export default function Login() {
             disabled={loading}
             style={{ marginTop: '0.5rem', width: '100%' }}
           >
+            <LogIn size={15} />
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>

@@ -52,7 +52,11 @@ const addStageRemarksOrDocs = async (req, res, next) => {
     const { stageId } = req.params;
     const { remarks, documents } = req.body;
 
-    const updatedStage = await stagesService.addStageRemarksOrDocs(stageId, { remarks, documents });
+    const updatedStage = await stagesService.addStageRemarksOrDocs(
+      stageId,
+      { remarks, documents },
+      req.user?.name || req.user?.id
+    );
     return res.status(200).json(updatedStage);
   } catch (error) {
     next(error);

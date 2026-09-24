@@ -4,7 +4,7 @@ import { setCredentials, clearCredentials } from '../redux/slices/authSlice';
 
 // Create dedicated axios instance with credentials enabled so httpOnly cookies flow automatically
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true
 });
 

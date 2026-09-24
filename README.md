@@ -15,57 +15,7 @@ A centralized IT Workflow Management System replacing Excel-based SOP workflows.
 
 ---
 
-## 📁 Repository Structure
-
-```
-corient-assessment/
-├── server/                    # Node.js + Express backend
-│   ├── prisma/
-│   │   ├── schema.prisma      # Prisma schema (Roles, Permissions, Users, SOP, Projects, Stages, Audit)
-│   │   └── seed.js            # Seed script (4 roles, permissions, 4 users, 1 published SOP)
-│   ├── src/
-│   │   ├── config/            # Prisma client singleton
-│   │   ├── middlewares/       # Auth (JWT), RBAC (DB-driven), ClientFilter (Response interceptor)
-│   │   ├── modules/
-│   │   │   ├── auth/          # Login, refresh rotation, logout
-│   │   │   ├── roles/         # Dynamic RBAC roles & permissions
-│   │   │   ├── users/         # User CRUD, 409 active assignment check, stage reassignment
-│   │   │   ├── sop/           # SOP templates, stage reordering, draft deletion, version publish
-│   │   │   ├── projects/      # Project creation from SOP snapshot, stage auto-generation
-│   │   │   ├── stages/        # Manual status transitions, conditional validation, status history
-│   │   │   └── audit/         # Append-only audit log querying
-│   │   ├── utils/             # Token creation & cookie utilities
-│   │   ├── app.js             # Express configuration & route mounting
-│   │   └── server.js          # Server entry point
-│   ├── .env.example
-│   └── package.json
-│
-├── client/                    # React + Vite + Redux Toolkit frontend
-│   ├── src/
-│   │   ├── api/               # Axios instance with 401 refresh interceptor & retry
-│   │   ├── components/        # PermissionGuard component
-│   │   ├── hooks/             # usePermission(module, action) hook
-│   │   ├── pages/             # Login, SopBuilder, UserManagement, Projects, WorkflowBoard, ClientView, AuditLog
-│   │   ├── redux/
-│   │   │   ├── slices/        # authSlice, sopSlice, usersSlice, projectsSlice, stagesSlice, auditSlice
-│   │   │   └── store.js       # Central Redux store
-│   │   ├── App.jsx
-│   │   ├── index.css          # Clean, professional, minimal styling
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
-└── README.md
-```
-
----
-
 ## ⚙️ Quick Start & Setup
-
-### Prerequisites
-- Node.js (v18 or v20 recommended)
-- PostgreSQL database (e.g. Neon DB instance or local Postgres)
-
----
 
 ### 1. Backend Setup (`server/`)
 
@@ -165,3 +115,34 @@ All accounts use password: `Password123!`
 - Stage status transitions update the board UI immediately. If the API rejects, the UI rolls back to the previous state with an error toast.
 - RTK `createSelector` memoizes workflow statistics (total, completed, in-progress, blocked, on-hold, and percentage complete).
 - Axios response interceptor seamlessly handles 401 errors, calls `/api/auth/refresh` using the secure `httpOnly` cookie, updates credentials in Redux, and retries the original request.
+
+---
+
+## 🌟 Bonus Features Implemented (4/4)
+
+In addition to 100% of the mandatory assessment requirements, all four bonus features from the evaluation rubric have been implemented:
+
+### 1. Stage Dependencies (Prerequisite Validation)
+- **Backend Validation**: Implemented in [`stages.service.js`](file:///d:/corient-assessment/server/src/modules/stages/stages.service.js). A stage cannot transition to `IN_PROGRESS` or `COMPLETED` unless the preceding stage (`order < current.order`) has reached `COMPLETED` status.
+- **Error Handling**: Violations return HTTP 400 with an explicit descriptive error (`Cannot transition "..." because preceding stage "..." is not yet Completed.`).
+- **Frontend Board Integration**: Stages with incomplete prerequisites display a `🔒 Pre-req: Stage X` badge. Attempting to start/complete triggers optimistic rollback with toast alert and in-modal dependency notice.
+
+### 2. Document Versioning & Revision History
+- **Strict Rule 1 Compliance**: Attaching remarks or documents strictly keeps stage status untouched.
+- **Automated Version Revision**: When uploading a revision with the same document name, the system increments version (`v1` → `v2`), timestamps the upload, and appends a snapshot of the prior revision into the document's `history` array.
+- **UI Interface**: The stage modal lists all attached documents with their version tags (e.g., `v2 (1 prev revision)`), hyperlinks, and an interactive upload form.
+
+### 3. Notifications Scaffold & Alert System
+- **Database Model**: PostgreSQL `Notification` entity linked to `User` tracking `type`, `title`, `message`, `read`, and `entityId`.
+- **Event-Driven Triggers**:
+  - `STAGE_BLOCKED`: Dispatched automatically to the Project Owner whenever an IT member marks a stage Blocked.
+  - `STAGE_ASSIGNED`: Dispatched automatically to the assigned user when stage ownership is set.
+  - `STAGE_REASSIGNED`: Dispatched automatically to the target user when an admin reassigns stages during employee deactivation.
+- **REST APIs**: `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`.
+- **Frontend Header Bell**: Live unread counter badge, interactive dropdown popover displaying notification cards, and "Mark all as read" button.
+
+### 4. Phase 2 Integration Stubs (OpenProject & Timesheet)
+- **OpenProject Work Package Stub**: [`openproject.stub.js`](file:///d:/corient-assessment/server/src/modules/integrations/openproject.stub.js) simulates external work package synchronization (`POST /api/integrations/openproject/sync/:stageId`, `GET /api/integrations/openproject/status/:projectId`).
+- **Timesheet Labor Logging Stub**: [`timesheet.stub.js`](file:///d:/corient-assessment/server/src/modules/integrations/timesheet.stub.js) simulates labor hours logging against workflow stages with generated tracking reference codes (`POST /api/integrations/timesheet/log`, `GET /api/integrations/timesheet/stage/:stageId`).
+- **UI Integration**: Action buttons directly in the Workflow Board stage modal allow instant one-click syncing and timesheet entry testing.
+

@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const notificationsService = require('../notifications/notifications.service');
 
 // Normalize status string to uppercase format with underscores for consistent database comparisons
 const normalizeStatus = (status) => {
@@ -8,7 +9,8 @@ const normalizeStatus = (status) => {
 // Manually update stage status and enforce conditional validation rules based on target state
 const updateStageStatus = async (stageId, { status, blocker, holdReason, completionDate, remarks }, actorId) => {
   const currentStage = await prisma.projectWorkflowStage.findUnique({
-    where: { id: stageId }
+    where: { id: stageId },
+    include: { project: true }
   });
 
   if (!currentStage) {
@@ -24,6 +26,25 @@ const updateStageStatus = async (stageId, { status, blocker, holdReason, complet
     const error = new Error(`Invalid status. Allowed values are: ${validStatuses.join(', ')}`);
     error.statusCode = 400;
     throw error;
+  }
+
+  // Bonus 1: Stage Dependency Check - Preceding stage must be COMPLETED before starting or finishing
+  if (normalizedStatus === 'IN_PROGRESS' || normalizedStatus === 'COMPLETED') {
+    const previousStage = await prisma.projectWorkflowStage.findFirst({
+      where: {
+        projectId: currentStage.projectId,
+        order: { lt: currentStage.order }
+      },
+      orderBy: { order: 'desc' }
+    });
+
+    if (previousStage && previousStage.status !== 'COMPLETED') {
+      const error = new Error(
+        `Stage Dependency Rule: Cannot transition "${currentStage.name}" to ${normalizedStatus.replace('_', ' ')} because preceding stage "${previousStage.name}" (Stage ${previousStage.order}) is not yet Completed.`
+      );
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   // Require blocker explanation when marking blocked so team members can resolve impediments promptly
@@ -52,8 +73,8 @@ const updateStageStatus = async (stageId, { status, blocker, holdReason, complet
     : (normalizedStatus === 'NOT_STARTED' || normalizedStatus === 'IN_PROGRESS' ? null : currentStage.completionDate);
 
   // Atomically update the stage state and append to the immutable status history table
-  return await prisma.$transaction(async (tx) => {
-    const updatedStage = await tx.projectWorkflowStage.update({
+  const updatedStage = await prisma.$transaction(async (tx) => {
+    const stage = await tx.projectWorkflowStage.update({
       where: { id: stageId },
       data: {
         status: normalizedStatus,
@@ -63,7 +84,8 @@ const updateStageStatus = async (stageId, { status, blocker, holdReason, complet
         remarks: remarks !== undefined ? remarks : currentStage.remarks
       },
       include: {
-        owner: { select: { id: true, name: true, email: true } }
+        owner: { select: { id: true, name: true, email: true } },
+        project: { select: { id: true, name: true, ownerId: true } }
       }
     });
 
@@ -80,8 +102,21 @@ const updateStageStatus = async (stageId, { status, blocker, holdReason, complet
       }
     });
 
-    return updatedStage;
+    return stage;
   });
+
+  // Bonus 3: Notifications Scaffold - Trigger alert to project lead if stage is blocked
+  if (normalizedStatus === 'BLOCKED' && currentStage.project?.ownerId) {
+    await notificationsService.createNotification({
+      userId: currentStage.project.ownerId,
+      type: 'STAGE_BLOCKED',
+      title: `Stage Blocked in ${currentStage.project.name}`,
+      message: `Stage "${currentStage.name}" was marked Blocked. Reason: ${blocker}`,
+      entityId: stageId
+    });
+  }
+
+  return updatedStage;
 };
 
 // Retrieve chronological history of status changes for a specific stage to track workflow progression
@@ -99,17 +134,31 @@ const getStageHistory = async (stageId) => {
 
 // Assign a dedicated team member as the owner responsible for executing this stage
 const assignStageOwner = async (stageId, ownerId) => {
-  return await prisma.projectWorkflowStage.update({
+  const updatedStage = await prisma.projectWorkflowStage.update({
     where: { id: stageId },
     data: { ownerId },
     include: {
-      owner: { select: { id: true, name: true, email: true } }
+      owner: { select: { id: true, name: true, email: true } },
+      project: { select: { id: true, name: true } }
     }
   });
+
+  // Bonus 3: Notifications Scaffold - Trigger alert to newly assigned team member
+  if (ownerId) {
+    await notificationsService.createNotification({
+      userId: ownerId,
+      type: 'STAGE_ASSIGNED',
+      title: 'Workflow Stage Assigned',
+      message: `You were assigned to "${updatedStage.name}" in project "${updatedStage.project?.name}".`,
+      entityId: stageId
+    });
+  }
+
+  return updatedStage;
 };
 
-// Update remarks or attach documents WITHOUT altering status, strictly upholding Rule 1
-const addStageRemarksOrDocs = async (stageId, { remarks, documents }) => {
+// Bonus 2: Update remarks or attach documents WITH versioning, strictly upholding Rule 1 (status untouched)
+const addStageRemarksOrDocs = async (stageId, { remarks, documents }, actorId) => {
   const currentStage = await prisma.projectWorkflowStage.findUnique({
     where: { id: stageId }
   });
@@ -123,13 +172,57 @@ const addStageRemarksOrDocs = async (stageId, { remarks, documents }) => {
   const updateData = {};
   if (remarks !== undefined) updateData.remarks = remarks;
 
-  // Append new document metadata to existing documents array
   if (documents !== undefined) {
     const existingDocs = Array.isArray(currentStage.documents) ? currentStage.documents : [];
-    updateData.documents = [...existingDocs, ...(Array.isArray(documents) ? documents : [documents])];
+    const incomingDocs = Array.isArray(documents) ? documents : [documents];
+
+    const updatedDocs = [...existingDocs];
+
+    for (const doc of incomingDocs) {
+      if (!doc) continue;
+      const docName = doc.name || doc.fileName || 'Document Attachment';
+      const docUrl = doc.url || doc.fileUrl || '';
+
+      // Check if document with same name exists to increment version revision
+      const existingIndex = updatedDocs.findIndex((d) => d.name === docName);
+
+      if (existingIndex !== -1) {
+        const existingDoc = updatedDocs[existingIndex];
+        const currentVer = existingDoc.version || 1;
+        const newVer = currentVer + 1;
+        const historyItem = {
+          version: currentVer,
+          url: existingDoc.url,
+          uploadedAt: existingDoc.uploadedAt || new Date().toISOString(),
+          uploadedBy: existingDoc.uploadedBy || 'User'
+        };
+        const revHistory = Array.isArray(existingDoc.history) ? [...existingDoc.history, historyItem] : [historyItem];
+
+        updatedDocs[existingIndex] = {
+          ...existingDoc,
+          url: docUrl,
+          version: newVer,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: actorId || existingDoc.uploadedBy || 'User',
+          history: revHistory
+        };
+      } else {
+        updatedDocs.push({
+          id: doc.id || `doc-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: docName,
+          url: docUrl,
+          version: 1,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: actorId || 'User',
+          history: []
+        });
+      }
+    }
+
+    updateData.documents = updatedDocs;
   }
 
-  // Intentionally leaves 'status' untouched so document uploads never trigger implicit status changes
+  // Intentionally leaves 'status' untouched so document uploads never trigger implicit status changes (Rule 1)
   return await prisma.projectWorkflowStage.update({
     where: { id: stageId },
     data: updateData,
@@ -145,3 +238,4 @@ module.exports = {
   assignStageOwner,
   addStageRemarksOrDocs
 };
+

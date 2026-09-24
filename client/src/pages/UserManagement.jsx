@@ -11,6 +11,20 @@ import {
   clearUserMessages
 } from '../redux/slices/usersSlice';
 import usePermission from '../hooks/usePermission';
+import StatusBadge from '../components/common/StatusBadge';
+import {
+  UserPlus,
+  Pencil,
+  UserX,
+  UserCheck,
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Users,
+  Check,
+  X,
+  RefreshCw
+} from 'lucide-react';
 
 // Provide user administration, role assignment, and the mandatory 409 reassignment deactivation safeguard
 export default function UserManagement() {
@@ -102,27 +116,30 @@ export default function UserManagement() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>User Management</h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Manage staff accounts, assign system roles, and safely handle employee deactivations
           </p>
         </div>
 
         {canCreate && (
           <button onClick={handleOpenCreate} className="btn-primary">
-            + Add New User
+            <UserPlus size={15} />
+            Add New User
           </button>
         )}
       </div>
 
       {successMessage && (
-        <div style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {successMessage}
+        <div className="alert alert-success">
+          <CheckCircle2 size={16} />
+          <span>{successMessage}</span>
         </div>
       )}
 
       {error && (
-        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {error}
+        <div className="alert alert-error">
+          <AlertCircle size={16} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -141,7 +158,8 @@ export default function UserManagement() {
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
+                <td colSpan="5" style={{ textAlign: 'center', color: 'var(--color-text-subtle)', padding: '2.5rem' }}>
+                  <Users size={32} style={{ margin: '0 auto 0.5rem', display: 'block', opacity: 0.6 }} />
                   No users found.
                 </td>
               </tr>
@@ -149,7 +167,7 @@ export default function UserManagement() {
               users.map((u) => (
                 <tr key={u.id}>
                   <td style={{ fontWeight: 500 }}>{u.name}</td>
-                  <td style={{ color: '#475569' }}>{u.email}</td>
+                  <td style={{ color: 'var(--color-text-muted)' }}>{u.email}</td>
                   <td>
                     <span className="badge badge-blue">
                       {u.role?.name || 'No Role'}
@@ -157,6 +175,7 @@ export default function UserManagement() {
                   </td>
                   <td>
                     <span className={`badge ${u.isActive ? 'badge-green' : 'badge-gray'}`}>
+                      {u.isActive ? <Check size={11} /> : <X size={11} />}
                       {u.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -168,6 +187,7 @@ export default function UserManagement() {
                           className="btn-secondary"
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                         >
+                          <Pencil size={12} />
                           Edit
                         </button>
                       )}
@@ -179,6 +199,7 @@ export default function UserManagement() {
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                           disabled={loading}
                         >
+                          <UserX size={12} />
                           Deactivate
                         </button>
                       )}
@@ -187,9 +208,10 @@ export default function UserManagement() {
                         <button
                           onClick={() => handleActivate(u.id)}
                           className="btn-secondary"
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#16a34a' }}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--color-success)' }}
                           disabled={loading}
                         >
+                          <UserCheck size={12} />
                           Activate
                         </button>
                       )}
@@ -278,6 +300,7 @@ export default function UserManagement() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={loading}>
+                  <Check size={14} />
                   {editingUser ? 'Save Changes' : 'Create User'}
                 </button>
               </div>
@@ -291,22 +314,23 @@ export default function UserManagement() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '580px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <span style={{ color: '#dc2626', fontSize: '1.25rem' }}>⚠️</span>
-              <h3 style={{ margin: 0, color: '#991b1b' }}>Cannot Deactivate: Active Stages Assigned</h3>
+              <AlertTriangle size={20} color="var(--color-danger)" />
+              <h3 style={{ margin: 0, color: 'var(--color-danger)' }}>Cannot Deactivate: Active Stages Assigned</h3>
             </div>
 
-            <p style={{ color: '#475569', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
               <strong>{reassignModal.userToDeactivate?.name}</strong> is currently assigned to the following active workflow stages. You must reassign these stages to another active user before deactivation can proceed.
             </p>
 
             {reassignModal.error && (
-              <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.5rem', borderRadius: '4px', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
-                {reassignModal.error}
+              <div className="alert alert-error" style={{ padding: '0.5rem', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
+                <AlertCircle size={14} />
+                <span>{reassignModal.error}</span>
               </div>
             )}
 
             {/* List of Blocking Active Assignments */}
-            <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '1rem' }}>
+            <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '6px', marginBottom: '1rem' }}>
               <table style={{ fontSize: '0.8rem' }}>
                 <thead>
                   <tr>
@@ -321,7 +345,7 @@ export default function UserManagement() {
                       <td style={{ fontWeight: 500 }}>{a.projectName}</td>
                       <td>{a.stageName}</td>
                       <td>
-                        <span className="badge badge-yellow">{a.status}</span>
+                        <StatusBadge status={a.status} />
                       </td>
                     </tr>
                   ))}
@@ -362,6 +386,7 @@ export default function UserManagement() {
                 className="btn-danger"
                 disabled={!targetUserId || reassignModal.loading}
               >
+                <RefreshCw size={13} />
                 {reassignModal.loading ? 'Reassigning & Deactivating...' : 'Reassign & Deactivate'}
               </button>
             </div>

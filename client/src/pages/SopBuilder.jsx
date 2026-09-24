@@ -12,6 +12,19 @@ import {
   clearSopError
 } from '../redux/slices/sopSlice';
 import usePermission from '../hooks/usePermission';
+import StatusBadge from '../components/common/StatusBadge';
+import {
+  Plus,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
+  Trash2,
+  Send,
+  History
+} from 'lucide-react';
 
 // Provide Super Admins with full SOP template stage authoring, reordering, visibility controls, and publishing
 export default function SopBuilder() {
@@ -118,25 +131,28 @@ export default function SopBuilder() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>SOP Template Builder</h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Configure dynamic SOP workflows, toggle client visibility, and publish immutable versions
           </p>
         </div>
 
         <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-          + New SOP Template
+          <Plus size={15} />
+          New SOP Template
         </button>
       </div>
 
       {actionSuccess && (
-        <div style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {actionSuccess}
+        <div className="alert alert-success">
+          <CheckCircle2 size={16} />
+          <span>{actionSuccess}</span>
         </div>
       )}
 
       {error && (
-        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {error}
+        <div className="alert alert-error">
+          <AlertCircle size={16} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -158,12 +174,13 @@ export default function SopBuilder() {
         {selectedTemplate && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.25rem' }}>
                 STATUS
               </span>
-              <span className={`badge ${selectedTemplate.isDraft ? 'badge-yellow' : 'badge-green'}`}>
-                {selectedTemplate.isDraft ? 'Draft' : `v${selectedTemplate.currentVersion} Published`}
-              </span>
+              <StatusBadge
+                status={selectedTemplate.isDraft ? 'DRAFT' : 'PUBLISHED'}
+                label={selectedTemplate.isDraft ? 'Draft' : `v${selectedTemplate.currentVersion} Published`}
+              />
             </div>
 
             {canPublish && (
@@ -173,6 +190,7 @@ export default function SopBuilder() {
                 className="btn-success"
                 style={{ marginTop: '0.85rem' }}
               >
+                <Send size={13} />
                 Publish New Version
               </button>
             )}
@@ -208,6 +226,7 @@ export default function SopBuilder() {
                     Client Visible
                   </label>
                   <button type="submit" className="btn-primary" disabled={loading} style={{ whiteSpace: 'nowrap' }}>
+                    <Plus size={14} />
                     Add Stage
                   </button>
                 </form>
@@ -215,7 +234,7 @@ export default function SopBuilder() {
 
               {/* Stage List */}
               {stages.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '1rem' }}>
+                <p style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', textAlign: 'center', padding: '1rem' }}>
                   No stages configured yet. Add your first stage above.
                 </p>
               ) : (
@@ -228,13 +247,13 @@ export default function SopBuilder() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '0.75rem 1rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--color-border)',
                         borderRadius: '6px',
-                        backgroundColor: '#ffffff'
+                        backgroundColor: 'var(--color-surface)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontWeight: 600, color: '#64748b', minWidth: '1.5rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', minWidth: '1.5rem' }}>
                           {idx + 1}.
                         </span>
                         <span style={{ fontWeight: 500 }}>{stage.name}</span>
@@ -244,6 +263,7 @@ export default function SopBuilder() {
                           onClick={() => handleToggleClientVisible(stage)}
                           title="Click to toggle client visibility"
                         >
+                          {stage.clientVisible ? <Eye size={10} /> : <EyeOff size={10} />}
                           {stage.clientVisible ? 'Client Visible' : 'Internal Only'}
                         </span>
                       </div>
@@ -257,7 +277,7 @@ export default function SopBuilder() {
                             style={{ padding: '0.2rem 0.5rem' }}
                             title="Move Up"
                           >
-                            ▲
+                            <ChevronUp size={14} />
                           </button>
                           <button
                             onClick={() => handleMoveStage(idx, 'DOWN')}
@@ -266,7 +286,7 @@ export default function SopBuilder() {
                             style={{ padding: '0.2rem 0.5rem' }}
                             title="Move Down"
                           >
-                            ▼
+                            <ChevronDown size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteStage(stage.id)}
@@ -274,7 +294,7 @@ export default function SopBuilder() {
                             style={{ padding: '0.2rem 0.5rem' }}
                             title="Delete Stage"
                           >
-                            ✕
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       )}
@@ -288,25 +308,28 @@ export default function SopBuilder() {
           {/* Version History Sidebar */}
           <div className="card">
             <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Version History</h3>
-            <p style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '1rem' }}>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '1rem' }}>
               Published versions are permanently immutable and protect existing projects.
             </p>
 
             {versions.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.875rem' }}>
+              <p style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', fontSize: '0.875rem' }}>
                 No published versions yet.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {versions.map((v) => (
-                  <div key={v.id} style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#f8fafc' }}>
+                  <div key={v.id} style={{ padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '6px', backgroundColor: 'var(--color-bg)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Version {v.versionNumber}</span>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <History size={13} color="var(--color-text-muted)" />
+                        Version {v.versionNumber}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                         {new Date(v.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#475569' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                       {Array.isArray(v.stagesData) ? `${v.stagesData.length} stages snapshotted` : ''}
                     </span>
                   </div>
@@ -353,6 +376,7 @@ export default function SopBuilder() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={loading}>
+                  <Plus size={14} />
                   Create Template
                 </button>
               </div>

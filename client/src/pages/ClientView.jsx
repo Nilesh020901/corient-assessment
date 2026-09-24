@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProjects, fetchProjectById } from '../redux/slices/projectsSlice';
+import StatusBadge from '../components/common/StatusBadge';
+import { FolderKanban, Calendar } from 'lucide-react';
 
 // Provide Client/Ops roles with a clean, read-only view of authorized milestone stages sanitized by the API
 export default function ClientView() {
@@ -33,22 +35,12 @@ export default function ClientView() {
   const completedStages = stages.filter((s) => s.status === 'COMPLETED').length;
   const progressPercent = stages.length > 0 ? Math.round((completedStages / stages.length) * 100) : 0;
 
-  const getBadgeClass = (st) => {
-    switch (st) {
-      case 'COMPLETED': return 'badge-green';
-      case 'IN_PROGRESS': return 'badge-blue';
-      case 'ON_HOLD': return 'badge-yellow';
-      case 'BLOCKED': return 'badge-red';
-      default: return 'badge-gray';
-    }
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>Client Delivery Portal</h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Milestone tracking and execution status for authorized initiatives
           </p>
         </div>
@@ -71,7 +63,8 @@ export default function ClientView() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-subtle)' }}>
+          <FolderKanban size={32} style={{ margin: '0 auto 0.5rem', display: 'block', opacity: 0.6 }} />
           No active projects are currently linked to your organization.
         </div>
       ) : (
@@ -81,9 +74,9 @@ export default function ClientView() {
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', color: '#1e293b' }}>{currentProject.name}</h3>
+                  <h3 style={{ fontSize: '1.25rem', color: 'var(--color-text-main)' }}>{currentProject.name}</h3>
                   {currentProject.description && (
-                    <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                       {currentProject.description}
                     </p>
                   )}
@@ -96,16 +89,16 @@ export default function ClientView() {
 
               {/* Progress Metric */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>
                   <span>DELIVERY COMPLETION</span>
                   <span>{progressPercent}% ({completedStages} of {stages.length} milestones complete)</span>
                 </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div
                     style={{
                       width: `${progressPercent}%`,
                       height: '100%',
-                      backgroundColor: progressPercent === 100 ? '#10b981' : '#2563eb',
+                      backgroundColor: progressPercent === 100 ? 'var(--color-success)' : 'var(--color-primary)',
                       transition: 'width 0.3s ease'
                     }}
                   />
@@ -119,7 +112,7 @@ export default function ClientView() {
             <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Project Milestones</h3>
 
             {stages.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '1.5rem' }}>
+              <p style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', textAlign: 'center', padding: '1.5rem' }}>
                 No client-visible milestones are configured for this initiative yet.
               </p>
             ) : (
@@ -132,36 +125,37 @@ export default function ClientView() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '1rem',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--color-border)',
                       borderRadius: '6px',
-                      backgroundColor: '#ffffff',
+                      backgroundColor: 'var(--color-surface)',
                       borderLeft: `4px solid ${
-                        stage.status === 'COMPLETED' ? '#10b981' :
-                        stage.status === 'BLOCKED' ? '#ef4444' :
-                        stage.status === 'ON_HOLD' ? '#f59e0b' :
-                        stage.status === 'IN_PROGRESS' ? '#3b82f6' : '#cbd5e1'
+                        stage.status === 'COMPLETED' ? 'var(--color-success)' :
+                        stage.status === 'BLOCKED' ? 'var(--color-danger)' :
+                        stage.status === 'ON_HOLD' ? 'var(--color-warning)' :
+                        stage.status === 'IN_PROGRESS' ? 'var(--color-primary)' : 'var(--color-border)'
                       }`
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <span style={{ fontWeight: 700, color: '#64748b', fontSize: '0.875rem' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                         {idx + 1}
                       </span>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#1e293b' }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-main)' }}>
                           {stage.name}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
-                          {stage.completionDate
-                            ? `Completed on ${new Date(stage.completionDate).toLocaleDateString()}`
-                            : (stage.dueDate ? `Target date: ${new Date(stage.dueDate).toLocaleDateString()}` : 'Scheduled')}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Calendar size={12} />
+                          <span>
+                            {stage.completionDate
+                              ? `Completed on ${new Date(stage.completionDate).toLocaleDateString()}`
+                              : (stage.dueDate ? `Target date: ${new Date(stage.dueDate).toLocaleDateString()}` : 'Scheduled')}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <span className={`badge ${getBadgeClass(stage.status)}`}>
-                      {stage.status.replace('_', ' ')}
-                    </span>
+                    <StatusBadge status={stage.status} />
                   </div>
                 ))}
               </div>

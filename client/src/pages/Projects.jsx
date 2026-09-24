@@ -10,6 +10,16 @@ import {
 import { fetchTemplates } from '../redux/slices/sopSlice';
 import { fetchUsers } from '../redux/slices/usersSlice';
 import usePermission from '../hooks/usePermission';
+import {
+  Plus,
+  Trash2,
+  ArrowUpRight,
+  FolderKanban,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 
 // Provide project portfolio oversight and SOP-driven project creation with live stage preview
 export default function Projects() {
@@ -80,27 +90,30 @@ export default function Projects() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>Projects Directory</h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
             Active initiatives instantiated from immutable SOP version snapshots
           </p>
         </div>
 
         {canCreate && (
           <button onClick={handleOpenCreate} className="btn-primary">
-            + Create Project
+            <Plus size={15} />
+            Create Project
           </button>
         )}
       </div>
 
       {successMessage && (
-        <div style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {successMessage}
+        <div className="alert alert-success">
+          <CheckCircle2 size={16} />
+          <span>{successMessage}</span>
         </div>
       )}
 
       {error && (
-        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {error}
+        <div className="alert alert-error">
+          <AlertCircle size={16} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -120,19 +133,20 @@ export default function Projects() {
           <tbody>
             {projects.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
-                  No projects found. Click &quot;+ Create Project&quot; to launch an initiative.
+                <td colSpan="6" style={{ textAlign: 'center', color: 'var(--color-text-subtle)', padding: '2.5rem' }}>
+                  <FolderKanban size={32} style={{ margin: '0 auto 0.5rem', display: 'block', opacity: 0.6 }} />
+                  No projects found. Click &quot;Create Project&quot; to launch an initiative.
                 </td>
               </tr>
             ) : (
               projects.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 600 }}>
-                    <Link to={`/workflow-board?projectId=${p.id}`}>
+                    <Link to={`/workflow-board?projectId=${p.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                       {p.name}
                     </Link>
                   </td>
-                  <td style={{ color: '#475569' }}>{p.sopTemplate?.title || 'Unknown'}</td>
+                  <td style={{ color: 'var(--color-text-muted)' }}>{p.sopTemplate?.title || 'Unknown'}</td>
                   <td>
                     <span className="badge badge-blue">
                       v{p.sopVersion?.versionNumber || '1'}
@@ -149,8 +163,9 @@ export default function Projects() {
                       <Link
                         to={`/workflow-board?projectId=${p.id}`}
                         className="btn-secondary"
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                       >
+                        <ArrowUpRight size={13} />
                         Workflow Board
                       </Link>
 
@@ -160,6 +175,7 @@ export default function Projects() {
                           className="btn-danger"
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                         >
+                          <Trash2 size={13} />
                           Delete
                         </button>
                       )}
@@ -276,6 +292,7 @@ export default function Projects() {
                           <strong>{idx + 1}.</strong> {s.name}
                         </span>
                         <span className={`badge ${s.clientVisible ? 'badge-blue' : 'badge-gray'}`} style={{ fontSize: '0.65rem' }}>
+                          {s.clientVisible ? <Eye size={10} /> : <EyeOff size={10} />}
                           {s.clientVisible ? 'Client Visible' : 'Internal'}
                         </span>
                       </div>
@@ -297,6 +314,7 @@ export default function Projects() {
                   className="btn-primary"
                   disabled={loading || !sopTemplateId || previewStages.length === 0}
                 >
+                  <Plus size={15} />
                   {loading ? 'Generating Stages...' : 'Create & Generate Stages'}
                 </button>
               </div>

@@ -1,6 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAuditLogs } from '../redux/slices/auditSlice';
+import {
+  Filter,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Pencil,
+  Trash2,
+  ArrowRightCircle,
+  Send,
+  History,
+  ShieldCheck,
+  AlertCircle
+} from 'lucide-react';
 
 // Provide an immutable, display-only audit trail to inspect historical events across the platform
 export default function AuditLog() {
@@ -41,14 +55,50 @@ export default function AuditLog() {
     dispatch(fetchAuditLogs({ page: 1, limit }));
   };
 
-  const getActionBadgeClass = (act) => {
+  const renderActionBadge = (act) => {
     switch (act) {
-      case 'CREATE': return 'badge-green';
-      case 'UPDATE': return 'badge-blue';
-      case 'DELETE': return 'badge-red';
-      case 'STATUS_CHANGE': return 'badge-yellow';
-      case 'PUBLISH': return 'badge-blue';
-      default: return 'badge-gray';
+      case 'CREATE':
+        return (
+          <span className="badge badge-green">
+            <Plus size={11} strokeWidth={2.5} />
+            <span>CREATE</span>
+          </span>
+        );
+      case 'UPDATE':
+        return (
+          <span className="badge badge-blue">
+            <Pencil size={11} strokeWidth={2.5} />
+            <span>UPDATE</span>
+          </span>
+        );
+      case 'DELETE':
+        return (
+          <span className="badge badge-red">
+            <Trash2 size={11} strokeWidth={2.5} />
+            <span>DELETE</span>
+          </span>
+        );
+      case 'STATUS_CHANGE':
+        return (
+          <span className="badge badge-yellow">
+            <ArrowRightCircle size={11} strokeWidth={2.5} />
+            <span>STATUS CHANGE</span>
+          </span>
+        );
+      case 'PUBLISH':
+        return (
+          <span className="badge badge-blue">
+            <Send size={11} strokeWidth={2.5} />
+            <span>PUBLISH</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="badge badge-gray">
+            <History size={11} strokeWidth={2.5} />
+            <span>{act}</span>
+          </span>
+        );
     }
   };
 
@@ -56,14 +106,15 @@ export default function AuditLog() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
         <h2>System Audit Trail</h2>
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
           Immutable log of all create, update, delete, and workflow state transitions across the platform
         </p>
       </div>
 
       {error && (
-        <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
-          {error}
+        <div className="alert alert-error">
+          <AlertCircle size={16} />
+          <span>{error}</span>
         </div>
       )}
 
@@ -122,9 +173,11 @@ export default function AuditLog() {
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="submit" className="btn-primary" disabled={loading} style={{ flex: 1 }}>
+              <Filter size={14} />
               Filter
             </button>
             <button type="button" onClick={handleResetFilters} className="btn-secondary">
+              <RotateCcw size={14} />
               Reset
             </button>
           </div>
@@ -147,46 +200,45 @@ export default function AuditLog() {
           <tbody>
             {logs.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8', padding: '2.5rem' }}>
+                <td colSpan="6" style={{ textAlign: 'center', color: 'var(--color-text-subtle)', padding: '2.5rem' }}>
+                  <ShieldCheck size={32} style={{ margin: '0 auto 0.5rem', display: 'block', opacity: 0.6 }} />
                   {loading ? 'Loading audit records...' : 'No audit entries match the current filter criteria.'}
                 </td>
               </tr>
             ) : (
               logs.map((log) => (
                 <tr key={log.id}>
-                  <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: '#64748b' }}>
+                  <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                   <td style={{ fontWeight: 500, fontSize: '0.85rem' }}>
                     {log.actor?.name || 'System / Automated'}
                   </td>
                   <td>
-                    <span className={`badge ${getActionBadgeClass(log.action)}`}>
-                      {log.action}
-                    </span>
+                    {renderActionBadge(log.action)}
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>
                     <strong>{log.entityType}</strong>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>
                       ID: {log.entityId}
                     </span>
                   </td>
                   <td style={{ maxWidth: '240px' }}>
                     {log.oldValue ? (
-                      <pre style={{ margin: 0, fontSize: '0.7rem', maxHeight: '80px', overflowY: 'auto', backgroundColor: '#f1f5f9', padding: '0.35rem', borderRadius: '4px' }}>
+                      <pre style={{ margin: 0, fontSize: '0.7rem', maxHeight: '80px', overflowY: 'auto', backgroundColor: 'var(--color-border-subtle)', padding: '0.35rem', borderRadius: '4px' }}>
                         {JSON.stringify(log.oldValue, null, 2)}
                       </pre>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.75rem' }}>none</span>
+                      <span style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', fontSize: '0.75rem' }}>none</span>
                     )}
                   </td>
                   <td style={{ maxWidth: '240px' }}>
                     {log.newValue ? (
-                      <pre style={{ margin: 0, fontSize: '0.7rem', maxHeight: '80px', overflowY: 'auto', backgroundColor: '#f1f5f9', padding: '0.35rem', borderRadius: '4px' }}>
+                      <pre style={{ margin: 0, fontSize: '0.7rem', maxHeight: '80px', overflowY: 'auto', backgroundColor: 'var(--color-border-subtle)', padding: '0.35rem', borderRadius: '4px' }}>
                         {JSON.stringify(log.newValue, null, 2)}
                       </pre>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.75rem' }}>none</span>
+                      <span style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', fontSize: '0.75rem' }}>none</span>
                     )}
                   </td>
                 </tr>
@@ -197,7 +249,7 @@ export default function AuditLog() {
       </div>
 
       {/* Pagination Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: '#64748b' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
         <span>
           Showing page <strong>{page}</strong> of <strong>{totalPages || 1}</strong> ({total} total audit entries)
         </span>
@@ -208,14 +260,16 @@ export default function AuditLog() {
             disabled={page <= 1 || loading}
             className="btn-secondary"
           >
-            ← Previous
+            <ChevronLeft size={14} />
+            Previous
           </button>
           <button
             onClick={() => loadLogs(page + 1)}
             disabled={page >= totalPages || loading}
             className="btn-secondary"
           >
-            Next →
+            Next
+            <ChevronRight size={14} />
           </button>
         </div>
       </div>
