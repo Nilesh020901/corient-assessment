@@ -70,8 +70,8 @@ const createProject = async ({ name, description, sopTemplateId, ownerId }) => {
 const getProjects = async (user) => {
   const where = {};
 
-  // Restrict non-administrative users to projects where they are assigned as owner or assigned to stages
-  if (user && (user.role === 'IT_MEMBER' || user.role === 'CLIENT')) {
+  // Restrict external CLIENT role to projects where they are assigned as owner or assigned to stages
+  if (user && user.role === 'CLIENT') {
     where.OR = [
       { ownerId: user.id },
       { stages: { some: { ownerId: user.id } } }

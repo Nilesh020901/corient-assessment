@@ -8,8 +8,7 @@ import {
   updateStage,
   deleteStage,
   reorderStages,
-  publishTemplate,
-  clearSopError
+  publishTemplate
 } from '../redux/slices/sopSlice';
 import usePermission from '../hooks/usePermission';
 import StatusBadge from '../components/common/StatusBadge';
@@ -23,15 +22,18 @@ import {
   ChevronDown,
   Trash2,
   Send,
-  History
+  History,
+  FileText,
+  Layers,
+  X,
+  Sparkles,
+  Info
 } from 'lucide-react';
 
-// Provide Super Admins with full SOP template stage authoring, reordering, visibility controls, and publishing
 export default function SopBuilder() {
   const dispatch = useDispatch();
   const { templates, selectedTemplate, loading, error, actionSuccess } = useSelector((state) => state.sop);
 
-  // Strictly gate publishing and updating capabilities using permissions
   const canPublish = usePermission('SOP', 'PUBLISH');
   const canUpdate = usePermission('SOP', 'UPDATE');
 
@@ -84,14 +86,13 @@ export default function SopBuilder() {
     }));
   };
 
-  const handleDeleteStage = (stageId) => {
+  const handleDeleteStage = (stageId, name) => {
     if (!canUpdate || !selectedTemplate) return;
-    if (window.confirm('Are you sure you want to delete this stage?')) {
+    if (window.confirm(`Are you sure you want to remove stage "${name}"?`)) {
       dispatch(deleteStage({ templateId: selectedTemplate.id, stageId }));
     }
   };
 
-  // Reorder stages by swapping adjacent elements and persisting their new sequence numbers
   const handleMoveStage = (index, direction) => {
     if (!canUpdate || !selectedTemplate || !selectedTemplate.stages) return;
     const stages = [...selectedTemplate.stages];
@@ -99,12 +100,10 @@ export default function SopBuilder() {
 
     if (targetIndex < 0 || targetIndex >= stages.length) return;
 
-    // Swap positions in local copy
     const temp = stages[index];
     stages[index] = stages[targetIndex];
     stages[targetIndex] = temp;
 
-    // Map new sequential order numbers
     const stageOrders = stages.map((s, idx) => ({
       id: s.id,
       order: idx + 1
@@ -118,7 +117,7 @@ export default function SopBuilder() {
 
   const handlePublish = async () => {
     if (!canPublish || !selectedTemplate) return;
-    if (window.confirm('Publishing will freeze this version as immutable. Continue?')) {
+    if (window.confirm('Publishing will freeze this stage configuration as a permanent immutable snapshot for project instantiation. Proceed?')) {
       await dispatch(publishTemplate(selectedTemplate.id));
     }
   };
@@ -128,117 +127,176 @@ export default function SopBuilder() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Header and New Template button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>SOP Template Builder</h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-            Configure dynamic SOP workflows, toggle client visibility, and publish immutable versions
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.15rem' }}>
+            Author standardized workflow sequences, toggle client visibility, and freeze immutable versions
           </p>
         </div>
 
         <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-          <Plus size={15} />
-          New SOP Template
+          <Plus size={16} strokeWidth={2.4} />
+          <span>New SOP Template</span>
         </button>
       </div>
 
       {actionSuccess && (
         <div className="alert alert-success">
-          <CheckCircle2 size={16} />
+          <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
           <span>{actionSuccess}</span>
         </div>
       )}
 
       {error && (
         <div className="alert alert-error">
-          <AlertCircle size={16} />
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
           <span>{error}</span>
         </div>
       )}
 
       {/* Template Selector Bar */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '240px' }}>
-          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.25rem' }}>
-            SELECT SOP TEMPLATE
+      <div className="card" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1.5rem',
+        flexWrap: 'wrap',
+        padding: '1.25rem'
+      }}>
+        <div style={{ flex: 1, minWidth: '260px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.35rem' }}>
+            <FileText size={13} color="var(--color-text-muted)" />
+            <span>Select Active Template</span>
           </label>
-          <select value={selectedTemplate?.id || ''} onChange={handleSelectTemplate}>
+          <select
+            value={selectedTemplate?.id || ''}
+            onChange={handleSelectTemplate}
+            style={{ fontWeight: 600 }}
+          >
             {templates.map((tpl) => (
               <option key={tpl.id} value={tpl.id}>
-                {tpl.title} ({tpl.isDraft ? 'Draft' : `v${tpl.currentVersion}`})
+                {tpl.title} ({tpl.isDraft ? 'Draft' : `v${tpl.currentVersion} Active`})
               </option>
             ))}
           </select>
         </div>
 
         {selectedTemplate && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.25rem' }}>
-                STATUS
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '0.3rem' }}>
+                Status
               </span>
               <StatusBadge
                 status={selectedTemplate.isDraft ? 'DRAFT' : 'PUBLISHED'}
-                label={selectedTemplate.isDraft ? 'Draft' : `v${selectedTemplate.currentVersion} Published`}
+                label={selectedTemplate.isDraft ? 'Draft (Editable)' : `v${selectedTemplate.currentVersion} Published`}
               />
             </div>
 
             {canPublish && (
-              <button
-                onClick={handlePublish}
-                disabled={loading || stages.length === 0}
-                className="btn-success"
-                style={{ marginTop: '0.85rem' }}
-              >
-                <Send size={13} />
-                Publish New Version
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'transparent', display: 'block', marginBottom: '0.3rem' }}>
+                  Action
+                </span>
+                <button
+                  onClick={handlePublish}
+                  disabled={loading || stages.length === 0}
+                  className="btn-success"
+                  title="Freeze configuration into an immutable version snapshot"
+                >
+                  <Send size={14} />
+                  <span>Publish New Version</span>
+                </button>
+              </div>
             )}
           </div>
         )}
       </div>
 
       {selectedTemplate && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1.5rem',
+          alignItems: 'start'
+        }}>
           {/* Main Stage Configuration Column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="card">
-              <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Workflow Stages</h3>
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Workflow Stages</h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                    Order of execution and client portal visibility settings
+                  </p>
+                </div>
+                <span className="badge badge-blue">
+                  {stages.length} stage{stages.length !== 1 ? 's' : ''}
+                </span>
+              </div>
 
-              {/* Add Stage Form */}
+              {/* Add Stage Inline Form */}
               {canUpdate && (
-                <form onSubmit={handleAddStage} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    placeholder="e.g. Requirement Gathering, QA Sign-off"
-                    value={stageName}
-                    onChange={(e) => setStageName(e.target.value)}
-                    style={{ flex: 1 }}
-                    required
-                  />
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <form
+                  onSubmit={handleAddStage}
+                  style={{
+                    backgroundColor: 'var(--color-bg)',
+                    padding: '0.85rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.65rem',
+                    alignItems: 'center',
+                    marginBottom: '1.5rem'
+                  }}
+                >
+                  <div style={{ flex: '1 1 200px' }}>
+                    <input
+                      type="text"
+                      placeholder="Stage Name (e.g. Security Audit, QA Sign-Off)"
+                      value={stageName}
+                      onChange={(e) => setStageName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <label style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.825rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    margin: 0
+                  }}>
                     <input
                       type="checkbox"
                       checked={stageClientVisible}
                       onChange={(e) => setStageClientVisible(e.target.checked)}
-                      style={{ width: 'auto' }}
+                      style={{ width: 'auto', cursor: 'pointer' }}
                     />
-                    Client Visible
+                    <span>Client Visible</span>
                   </label>
-                  <button type="submit" className="btn-primary" disabled={loading} style={{ whiteSpace: 'nowrap' }}>
+
+                  <button type="submit" className="btn-primary" disabled={loading} style={{ padding: '0.45rem 0.85rem' }}>
                     <Plus size={14} />
-                    Add Stage
+                    <span>Add Stage</span>
                   </button>
                 </form>
               )}
 
               {/* Stage List */}
               {stages.length === 0 ? (
-                <p style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', textAlign: 'center', padding: '1rem' }}>
-                  No stages configured yet. Add your first stage above.
-                </p>
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  <Layers size={36} color="var(--color-text-subtle)" style={{ margin: '0 auto 0.5rem', opacity: 0.6 }} />
+                  <div style={{ fontWeight: 600, color: 'var(--color-text-main)', fontSize: '0.9rem' }}>No stages in this template</div>
+                  <div style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Add your first execution step above.</div>
+                </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {stages.map((stage, idx) => (
                     <div
                       key={stage.id}
@@ -248,56 +306,81 @@ export default function SopBuilder() {
                         justifyContent: 'space-between',
                         padding: '0.75rem 1rem',
                         border: '1px solid var(--color-border)',
-                        borderRadius: '6px',
-                        backgroundColor: 'var(--color-surface)'
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'var(--color-surface)',
+                        transition: 'all var(--transition-fast)',
+                        boxShadow: 'var(--shadow-xs)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', minWidth: '1.5rem' }}>
-                          {idx + 1}.
+                        <span style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--color-primary-light)',
+                          color: 'var(--color-primary)',
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {idx + 1}
                         </span>
-                        <span style={{ fontWeight: 500 }}>{stage.name}</span>
-                        <span
-                          className={`badge ${stage.clientVisible ? 'badge-blue' : 'badge-gray'}`}
-                          style={{ cursor: canUpdate ? 'pointer' : 'default' }}
-                          onClick={() => handleToggleClientVisible(stage)}
-                          title="Click to toggle client visibility"
-                        >
-                          {stage.clientVisible ? <Eye size={10} /> : <EyeOff size={10} />}
-                          {stage.clientVisible ? 'Client Visible' : 'Internal Only'}
-                        </span>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>
+                            {stage.name}
+                          </div>
+                        </div>
                       </div>
 
-                      {canUpdate && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => handleMoveStage(idx, 'UP')}
-                            disabled={idx === 0}
-                            className="btn-secondary"
-                            style={{ padding: '0.2rem 0.5rem' }}
-                            title="Move Up"
-                          >
-                            <ChevronUp size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleMoveStage(idx, 'DOWN')}
-                            disabled={idx === stages.length - 1}
-                            className="btn-secondary"
-                            style={{ padding: '0.2rem 0.5rem' }}
-                            title="Move Down"
-                          >
-                            <ChevronDown size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteStage(stage.id)}
-                            className="btn-danger"
-                            style={{ padding: '0.2rem 0.5rem' }}
-                            title="Delete Stage"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <button
+                          type="button"
+                          className={`badge ${stage.clientVisible ? 'badge-blue' : 'badge-gray'}`}
+                          style={{
+                            cursor: canUpdate ? 'pointer' : 'default',
+                            border: 'none',
+                            padding: '0.25rem 0.65rem'
+                          }}
+                          onClick={() => handleToggleClientVisible(stage)}
+                          title="Click to toggle visibility in Client Delivery Portal"
+                        >
+                          {stage.clientVisible ? <Eye size={11} /> : <EyeOff size={11} />}
+                          <span>{stage.clientVisible ? 'Client Visible' : 'Internal Only'}</span>
+                        </button>
+
+                        {canUpdate && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <button
+                              onClick={() => handleMoveStage(idx, 'UP')}
+                              disabled={idx === 0}
+                              className="btn-secondary"
+                              style={{ padding: '0.25rem 0.45rem' }}
+                              title="Move Up"
+                            >
+                              <ChevronUp size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleMoveStage(idx, 'DOWN')}
+                              disabled={idx === stages.length - 1}
+                              className="btn-secondary"
+                              style={{ padding: '0.25rem 0.45rem' }}
+                              title="Move Down"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStage(stage.id, stage.name)}
+                              className="btn-danger"
+                              style={{ padding: '0.25rem 0.45rem' }}
+                              title="Remove Stage"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -306,32 +389,54 @@ export default function SopBuilder() {
           </div>
 
           {/* Version History Sidebar */}
-          <div className="card">
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Version History</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '1rem' }}>
-              Published versions are permanently immutable and protect existing projects.
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
+              <History size={16} color="var(--color-primary)" />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Version History</h3>
+            </div>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', marginBottom: '1.1rem' }}>
+              Published version snapshots are immutable. New projects use the latest published snapshot.
             </p>
 
             {versions.length === 0 ? (
-              <p style={{ color: 'var(--color-text-subtle)', fontStyle: 'italic', fontSize: '0.875rem' }}>
-                No published versions yet.
-              </p>
+              <div style={{
+                padding: '1.5rem',
+                textAlign: 'center',
+                backgroundColor: 'var(--color-bg)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--color-border)',
+                color: 'var(--color-text-subtle)'
+              }}>
+                <Info size={20} style={{ margin: '0 auto 0.35rem' }} />
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  No published versions yet. Click &quot;Publish New Version&quot; when your draft is ready.
+                </p>
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '420px', overflowY: 'auto' }}>
                 {versions.map((v) => (
-                  <div key={v.id} style={{ padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '6px', backgroundColor: 'var(--color-bg)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <History size={13} color="var(--color-text-muted)" />
+                  <div
+                    key={v.id}
+                    style={{
+                      padding: '0.85rem',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-bg)',
+                      boxShadow: 'var(--shadow-xs)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <span className="badge badge-purple" style={{ fontSize: '0.72rem' }}>
                         Version {v.versionNumber}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-subtle)' }}>
                         {new Date(v.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      {Array.isArray(v.stagesData) ? `${v.stagesData.length} stages snapshotted` : ''}
-                    </span>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+                      <Layers size={12} color="var(--color-text-muted)" />
+                      <span>{Array.isArray(v.stagesData) ? `${v.stagesData.length} stages snapshotted` : '0 stages'}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -344,15 +449,28 @@ export default function SopBuilder() {
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3 style={{ marginBottom: '1rem' }}>Create New SOP Template</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Create New SOP Template</h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.825rem', marginTop: '0.2rem' }}>
+                  Define a new workflow architecture template.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
             <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                  Template Title
-                </label>
+                <label>Template Title *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Infrastructure Deployment Workflow"
+                  placeholder="e.g. Infrastructure Deployment Standard Workflow"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
@@ -360,24 +478,22 @@ export default function SopBuilder() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                  Description (Optional)
-                </label>
+                <label>Description (Optional)</label>
                 <textarea
                   rows="3"
-                  placeholder="Describe the purpose of this SOP workflow"
+                  placeholder="Outline the scope, regulatory context, or standard operating targets..."
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setShowCreateModal(false)} className="btn-secondary">
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={loading}>
                   <Plus size={14} />
-                  Create Template
+                  <span>Create Template</span>
                 </button>
               </div>
             </form>
